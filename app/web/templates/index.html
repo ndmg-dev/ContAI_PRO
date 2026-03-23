@@ -1,0 +1,32 @@
+{% extends 'layouts/base.html' %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-content">
+        <div class="hero-badge">
+            <span class="ai-orb" aria-hidden="true">
+                <svg viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Ícone de IA">
+                    <defs>
+                        <radialGradient id="g" cx="50%" cy="35%" r="60%">
+                            <stop offset="0%" stop-color="rgba(255,255,255,0.95)"/>
+                            <stop offset="55%" stop-color="rgba(172,141,90,0.55)"/>
+                            <stop offset="100%" stop-color="rgba(10,10,10,0.0)"/>
+                        </radialGradient>
+                    </defs>
+                    <circle cx="32" cy="32" r="18" fill="url(#g)"></circle>
+                    <circle class="ai-orb__ring" cx="32" cy="32" r="24" fill="none" stroke="rgba(172,141,90,0.35)" stroke-width="1.5" stroke-dasharray="4 6"></circle>
+                    <path class="ai-orb__pulse" d="M12 34c6-10 14-16 20-16s14 6 20 16" fill="none" stroke="rgba(247,247,247,0.35)" stroke-width="1.2" stroke-linecap="round"></path>
+                </svg>
+            </span>
+            <div class="accent-line"></div>
+        </div>
+
+        <h1 class="hero-title">ContAI</h1>
+        <p class="hero-subtitle">Inteligência Artificial & Gestão Contábil de Alta Performance</p>
+        <div class="hero-actions">
+            <a href="{{ url_for('auth.login') }}" class="btn-gold">Acessar Plataforma</a>
+        </div>
+        <p style="margin-top: 40px; font-size: 0.9rem; letter-spacing: 0.1em; color: var(--accent-gold-soft);">MENDONÇA GALVÃO CONTADORES ASSOCIADOS</p>
+    </div>
+</section>
+{% endblock %}

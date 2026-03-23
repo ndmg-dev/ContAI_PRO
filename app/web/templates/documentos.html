@@ -1,0 +1,274 @@
+{% extends 'layouts/base.html' %}
+{% block title %}Documentos — ContAI{% endblock %}
+
+{% block content %}
+{% include 'partials/sidebar.html' with context %}
+
+<!-- Upload Progress Overlay -->
+<div id="upload-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:var(--bg-card); padding:36px 48px; border-radius:16px; border:1px solid var(--border-color); text-align:center; min-width:320px;">
+        <div style="width:40px; height:40px; margin:0 auto 16px; border:3px solid var(--border-color); border-top-color:var(--accent-gold); border-radius:50%; animation:spin 0.8s linear infinite;"></div>
+        <p style="font-weight:600; font-size:1rem; margin-bottom:4px;">Processando arquivos…</p>
+        <p style="color:var(--text-secondary); font-size:0.85rem;">Aguarde enquanto os documentos são importados.</p>
+    </div>
+</div>
+<style> @keyframes spin { to { transform: rotate(360deg); } } </style>
+
+<!-- Main -->
+<div style="flex:1; padding:40px; overflow-y:auto;">
+
+    <header style="margin-bottom:32px;">
+        <h1 style="font-size:1.75rem; margin-bottom:4px;">Documentos</h1>
+        <p style="color:var(--text-secondary); font-size:0.9rem;">Cadastre a empresa via CNPJ e importe os extratos e planilhas para conciliação.</p>
+    </header>
+
+    <!-- ── Section 1: CNPJ Lookup ── -->
+    <div class="card" style="margin-bottom:28px;">
+        <h3 style="font-size:0.78rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-secondary); margin-bottom:20px; display:flex; align-items:center; gap:8px;">
+            <i data-lucide="building-2" style="width:15px;height:15px;"></i> Cadastrar Empresa
+        </h3>
+
+        <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+            <div style="flex:1; min-width:200px;">
+                <label style="display:block; margin-bottom:6px; font-size:0.82rem; color:var(--text-secondary);">CNPJ da Empresa</label>
+                <input id="cnpj-input" type="text" placeholder="00.000.000/0001-00" maxlength="18"
+                    style="width:100%; padding:11px 14px; background:#111; border:1px solid #333; border-radius:8px; color:#fff; font-size:0.9rem; box-sizing:border-box;">
+            </div>
+            <button id="btn-buscar-cnpj" onclick="buscarCNPJ()"
+                style="padding:11px 22px; background:var(--accent-gold); color:#111; border:none; border-radius:8px; font-weight:700; cursor:pointer; font-size:0.88rem; white-space:nowrap; display:flex; align-items:center; gap:8px;">
+                <i data-lucide="search" style="width:15px;height:15px;"></i> Buscar na Receita Federal
+            </button>
+        </div>
+
+        <!-- Result card (hidden until API returns) -->
+        <div id="empresa-card" style="display:none; margin-top:20px; padding:20px; background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+                <div>
+                    <p id="ec-nome" style="font-size:1.1rem; font-weight:700; margin-bottom:4px;"></p>
+                    <p id="ec-cnpj" style="font-size:0.82rem; color:var(--accent-gold); font-family:monospace;"></p>
+                    <p id="ec-situacao" style="margin-top:6px; font-size:0.8rem;"></p>
+                </div>
+                <div style="text-align:right;">
+                    <p id="ec-atividade" style="font-size:0.82rem; color:var(--text-secondary); max-width:280px;"></p>
+                    <p id="ec-endereco" style="font-size:0.78rem; color:#666; margin-top:4px; max-width:280px;"></p>
+                </div>
+            </div>
+            <div style="margin-top:16px; display:flex; justify-content:flex-end;">
+                <button id="btn-cadastrar" onclick="cadastrarEmpresa()"
+                    style="padding:9px 20px; background:rgba(76,175,125,0.15); color:#4caf7d; border:1px solid rgba(76,175,125,0.4); border-radius:8px; cursor:pointer; font-weight:600; font-size:0.85rem; display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="check-circle" style="width:15px;height:15px;"></i> Confirmar e Cadastrar
+                </button>
+            </div>
+        </div>
+
+        <div id="cnpj-feedback" style="display:none; margin-top:12px; padding:10px 16px; border-radius:8px; font-size:0.85rem;"></div>
+    </div>
+
+    <!-- ── Section 2: Upload ── -->
+    <div class="card" style="margin-bottom:28px;">
+        <h3 style="font-size:0.78rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-secondary); margin-bottom:20px; display:flex; align-items:center; gap:8px;">
+            <i data-lucide="upload-cloud" style="width:15px;height:15px;"></i> Importar Documentos
+        </h3>
+
+        {% if not session.get('active_empresa') %}
+        <div style="padding:20px; background:rgba(212,172,107,0.07); border:1px solid rgba(212,172,107,0.25); border-radius:10px; color:var(--accent-gold); font-size:0.88rem; display:flex; align-items:center; gap:10px;">
+            <i data-lucide="alert-triangle" style="width:18px;height:18px; flex-shrink:0;"></i>
+            Cadastre ou selecione uma empresa acima antes de importar documentos.
+        </div>
+        {% else %}
+        <form id="upload-form" action="{{ url_for('documentos.upload') }}" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div id="drop-zone" onclick="document.getElementById('file-input').click()"
+                style="border:2px dashed var(--border-color); border-radius:12px; padding:32px 24px; text-align:center; cursor:pointer; transition:border-color 0.2s, background 0.2s; margin-bottom:16px; position:relative;">
+                <i data-lucide="upload-cloud" style="width:36px;height:36px;margin:0 auto 10px;display:block;color:var(--accent-gold);opacity:0.8;"></i>
+                <p style="font-weight:600; margin-bottom:4px;">Arraste arquivos aqui ou clique para selecionar</p>
+                <p style="color:var(--text-secondary); font-size:0.82rem;">PDF · Excel (.xlsx) · XML · OFX — múltiplos arquivos permitidos</p>
+                <div id="file-badge" style="display:none; margin-top:14px; background:rgba(172,141,90,0.15); border:1px solid var(--accent-gold); color:var(--accent-gold); padding:6px 14px; border-radius:20px; font-size:0.83rem; font-weight:600; display:inline-block;">
+                    <span id="file-count">0</span> arquivo(s) selecionado(s)
+                </div>
+            </div>
+            <input type="file" id="file-input" name="file" accept=".pdf,.xlsx,.xls,.xml,.ofx,.csv" multiple style="display:none;">
+            <div style="display:flex; justify-content:flex-end;">
+                <button type="submit" class="btn-gold" id="submit-send"
+                    style="font-size:0.88rem; display:flex; align-items:center; gap:8px; opacity:0.5; pointer-events:none;">
+                    <i data-lucide="send" style="width:15px;height:15px;"></i> Enviar
+                </button>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div style="margin-bottom:20px;">
+        {% for category, message in messages %}
+        {% set bg = '#5c2020' if category == 'error' else ('#1a3a1a' if category == 'success' else '#1a2a3a') %}
+        <div style="background:{{ bg }}; padding:12px 20px; border-radius:8px; margin-bottom:10px; font-size:0.88rem;">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <!-- ── Section 3: Document list ── -->
+    <div class="card">
+        <h3 style="font-size:0.78rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-secondary); margin-bottom:20px; display:flex; align-items:center; gap:8px;">
+            <i data-lucide="file-text" style="width:15px;height:15px;"></i> Documentos Importados
+        </h3>
+
+        {% if documentos %}
+        <table style="width:100%; border-collapse:collapse; font-size:0.88rem;">
+            <thead>
+                <tr style="border-bottom:1px solid var(--border-color);">
+                    <th style="padding:10px 12px; text-align:left; color:var(--text-secondary); font-weight:500;">Arquivo</th>
+                    <th style="padding:10px 12px; text-align:left; color:var(--text-secondary); font-weight:500;">Tipo</th>
+                    <th style="padding:10px 12px; text-align:left; color:var(--text-secondary); font-weight:500;">Status</th>
+                    <th style="padding:10px 12px; text-align:left; color:var(--text-secondary); font-weight:500;">Data</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for doc in documentos %}
+                <tr style="border-bottom:1px solid #1e1e1e;">
+                    <td style="padding:12px; color:var(--text-primary);">{{ doc.nome_original }}</td>
+                    <td style="padding:12px;"><span style="background:rgba(172,141,90,0.15); color:var(--accent-gold); padding:3px 10px; border-radius:4px; font-size:0.78rem;">{{ doc.tipo|upper }}</span></td>
+                    <td style="padding:12px; color:var(--text-secondary);">{{ doc.status }}</td>
+                    <td style="padding:12px; color:var(--text-secondary);">{{ doc.created_at[:10] if doc.created_at else '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align:center; padding:48px 0; color:var(--text-secondary);">
+            <i data-lucide="inbox" style="width:40px;height:40px;margin:0 auto 12px;display:block;opacity:0.4;"></i>
+            <p>Nenhum documento importado ainda.</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<script>
+let _empresaPendente = null;
+
+// CNPJ formatting
+document.getElementById('cnpj-input').addEventListener('input', function () {
+    let v = this.value.replace(/\D/g, '').slice(0, 14);
+    if (v.length > 12) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})$/, '$1.$2.$3/$4-$5');
+    else if (v.length > 8) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{0,4})$/, '$1.$2.$3/$4');
+    else if (v.length > 5) v = v.replace(/^(\d{2})(\d{3})(\d{0,3})$/, '$1.$2.$3');
+    else if (v.length > 2) v = v.replace(/^(\d{2})(\d{0,3})$/, '$1.$2');
+    this.value = v;
+});
+
+// Enter to search
+document.getElementById('cnpj-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); buscarCNPJ(); }
+});
+
+function showFeedback(msg, ok) {
+    const el = document.getElementById('cnpj-feedback');
+    el.style.display = 'block';
+    el.style.background = ok ? 'rgba(76,175,125,0.1)' : 'rgba(224,82,82,0.1)';
+    el.style.color = ok ? '#4caf7d' : '#e05252';
+    el.style.border = `1px solid ${ok ? 'rgba(76,175,125,0.3)' : 'rgba(224,82,82,0.3)'}`;
+    el.textContent = msg;
+}
+
+async function buscarCNPJ() {
+    const cnpj = document.getElementById('cnpj-input').value;
+    const btn = document.getElementById('btn-buscar-cnpj');
+    document.getElementById('empresa-card').style.display = 'none';
+    document.getElementById('cnpj-feedback').style.display = 'none';
+    _empresaPendente = null;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader" style="width:15px;height:15px;"></i> Consultando…';
+    lucide.createIcons();
+
+    try {
+        const res = await fetch('{{ url_for("documentos.buscar_cnpj") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}' },
+            body: JSON.stringify({ cnpj })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            _empresaPendente = data.empresa;
+            preencherCard(data.empresa);
+        } else {
+            showFeedback(data.message, false);
+        }
+    } catch (e) {
+        showFeedback('Erro de conexão. Tente novamente.', false);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="search" style="width:15px;height:15px;"></i> Buscar na Receita Federal';
+        lucide.createIcons();
+    }
+}
+
+function preencherCard(e) {
+    document.getElementById('ec-nome').textContent = e.razao_social;
+    document.getElementById('ec-cnpj').textContent = e.cnpj;
+    const situacaoEl = document.getElementById('ec-situacao');
+    const ativa = (e.situacao || '').toLowerCase().includes('ativa');
+    situacaoEl.innerHTML = `<span style="display:inline-block; padding:2px 8px; border-radius:4px; font-size:0.78rem; background:${ativa ? 'rgba(76,175,125,0.15)' : 'rgba(224,82,82,0.15)'}; color:${ativa ? '#4caf7d' : '#e05252'};">${e.situacao}</span>`;
+    document.getElementById('ec-atividade').textContent = e.atividade_principal || '';
+    document.getElementById('ec-endereco').textContent = e.endereco || '';
+    document.getElementById('empresa-card').style.display = 'block';
+    lucide.createIcons();
+}
+
+async function cadastrarEmpresa() {
+    if (!_empresaPendente) return;
+    const btn = document.getElementById('btn-cadastrar');
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader" style="width:15px;height:15px;"></i> Salvando…';
+    lucide.createIcons();
+
+    try {
+        const res = await fetch('{{ url_for("documentos.cadastrar_empresa") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}' },
+            body: JSON.stringify(_empresaPendente)
+        });
+        const data = await res.json();
+        if (data.ok) {
+            showFeedback(`✓ ${data.message} — Recarregando…`, true);
+            setTimeout(() => location.reload(), 1200);
+        } else {
+            showFeedback(data.message, false);
+            btn.disabled = false;
+            btn.innerHTML = '<i data-lucide="check-circle" style="width:15px;height:15px;"></i> Confirmar e Cadastrar';
+            lucide.createIcons();
+        }
+    } catch (e) {
+        showFeedback('Erro de conexão ao salvar empresa.', false);
+        btn.disabled = false;
+    }
+}
+
+// File input UX
+const fileInput = document.getElementById('file-input');
+const sendBtn = document.getElementById('submit-send');
+const dropZone = document.getElementById('drop-zone');
+
+if (fileInput) {
+    fileInput.addEventListener('change', () => updateFileUI(fileInput.files));
+    ['dragenter','dragover'].forEach(ev => dropZone?.addEventListener(ev, e => { e.preventDefault(); dropZone.style.borderColor = 'var(--accent-gold)'; }));
+    ['dragleave','drop'].forEach(ev => dropZone?.addEventListener(ev, e => { e.preventDefault(); dropZone.style.borderColor = 'var(--border-color)'; }));
+    dropZone?.addEventListener('drop', e => { fileInput.files = e.dataTransfer.files; updateFileUI(e.dataTransfer.files); });
+}
+
+function updateFileUI(files) {
+    if (!files || files.length === 0) return;
+    document.getElementById('file-count').textContent = files.length;
+    document.getElementById('file-badge').style.display = 'inline-block';
+    if (sendBtn) { sendBtn.style.opacity = '1'; sendBtn.style.pointerEvents = 'auto'; }
+}
+
+document.getElementById('upload-form')?.addEventListener('submit', () => {
+    document.getElementById('upload-overlay').style.display = 'flex';
+});
+</script>
+{% endblock %}

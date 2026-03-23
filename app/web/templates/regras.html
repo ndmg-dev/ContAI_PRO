@@ -1,0 +1,216 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Regras de Classificação - ContAI{% endblock %}
+
+{% block content %}
+<!-- Sidebar -->
+{% include 'partials/sidebar.html' with context %}
+
+<!-- Main Content Area -->
+<div style="flex: 1; padding: 40px; overflow-y: auto;">
+    <header style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px;">
+        <div>
+            <h1 style="font-size: 1.75rem; margin-bottom: 4px;">Motor de Regras</h1>
+            <p style="color: var(--text-secondary); font-size: 0.9rem;">Configure regras automáticas para classificar compras, fornecedores e tarifas.</p>
+        </div>
+        <button onclick="openModal('modal-add-regra')" class="btn-gold" style="padding: 10px 20px; display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="plus" style="width: 16px; height: 16px;"></i> Nova Regra
+        </button>
+    </header>
+
+    <div class="card" style="padding: 0; overflow: hidden;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead style="background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border-color);">
+                <tr>
+                    <th style="padding: 16px 24px; color: var(--text-secondary); font-weight: 500;">Prioridade</th>
+                    <th style="padding: 16px 24px; color: var(--text-secondary); font-weight: 500;">Tipo</th>
+                    <th style="padding: 16px 24px; color: var(--text-secondary); font-weight: 500;">Padrão Textual</th>
+                    <th style="padding: 16px 24px; color: var(--text-secondary); font-weight: 500;">Conta de Destino</th>
+                    <th style="padding: 16px 24px; text-align: right; color: var(--text-secondary); font-weight: 500;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if regras %}
+                    {% for regra in regras %}
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 16px 24px;">{{ regra.prioridade }}</td>
+                        <td style="padding: 16px 24px;">
+                            <span class="tag tag-{{ regra.tipo_regra|lower }}">{{ regra.tipo_regra }}</span>
+                        </td>
+                        <td style="padding: 16px 24px; font-family: monospace; color: var(--text-primary);">"{{ regra.padrao }}"</td>
+                        <td style="padding: 16px 24px;">
+                            {% if regra.plano_contas %}
+                                <span style="font-family: monospace; color: var(--accent-gold);">{{ regra.plano_contas.codigo }}</span> - {{ regra.plano_contas.descricao }}
+                            {% else %}
+                                <span style="color: var(--text-secondary);">Conta Indefinida</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 16px 24px; text-align: right; display: flex; gap: 8px; justify-content: flex-end;">
+                            <button onclick="editRegra('{{ regra.id }}', '{{ regra.tipo_regra }}', '{{ regra.padrao }}', '{{ regra.conta_id }}', '{{ regra.prioridade }}')" 
+                                    style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px;" title="Editar">
+                                <i data-lucide="edit-2" style="width: 16px; height: 16px;"></i>
+                            </button>
+                            <button onclick="deleteRegra('{{ regra.id }}')" 
+                                    style="background: transparent; border: none; color: var(--status-red); cursor: pointer; padding: 4px;" title="Excluir">
+                                <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="5" style="padding: 40px; text-align: center; color: var(--text-secondary);">
+                            <i data-lucide="search" style="width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+                            <p>Nenhuma regra de classificação cadastrada.</p>
+                            <button onclick="openModal('modal-add-regra')" class="btn-outline-gold" style="margin-top: 16px; padding: 8px 16px;">
+                                Criar Nova Regra
+                            </button>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal: Nova/Editar Regra -->
+<div id="modal-add-regra" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center;">
+    <div class="card" style="width: 100%; max-width: 500px; padding: 32px; position: relative;">
+        <button onclick="closeModal('modal-add-regra')" style="position: absolute; top: 20px; right: 20px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer;">
+            <i data-lucide="x"></i>
+        </button>
+        <h2 id="modal-title" style="margin-bottom: 24px;">Configurar Regra</h2>
+        
+        <form id="formRegra" onsubmit="saveRegra(event)">
+            <input type="hidden" id="regraId">
+            
+            <div style="display: grid; grid-template-columns: 1fr 100px; gap: 16px; margin-bottom: 16px;">
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 8px; font-size: 0.88rem; color: var(--text-secondary);">Tipo de Regra</label>
+                    <select id="regraTipo" required style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff;">
+                        <option value="TEXTO_LIVRE">Texto Livre (Extrato / Histórico)</option>
+                        <option value="FORNECEDOR">Fornecedor (Nome / NF-e)</option>
+                        <option value="BANCO">Padrão Bancário (Pix, Ted)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 8px; font-size: 0.88rem; color: var(--text-secondary);">Prioridade</label>
+                    <input type="number" id="regraPrioridade" required value="0" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff;">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-size: 0.88rem; color: var(--text-secondary);">Padrão (Texto para identificar)</label>
+                <input type="text" id="regraPadrao" required placeholder="Ex: SISPAG, TARIFA DOC, SUPERMERCADO" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff;">
+                <small style="display: block; margin-top: 6px; color: #777; font-size: 0.75rem;">A busca ignora maiúsculas/minúsculas (Exato ou Contém).</small>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 32px;">
+                <label style="display: block; margin-bottom: 8px; font-size: 0.88rem; color: var(--text-secondary);">Conta Contábil de Destino</label>
+                <select id="regraConta" required style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff;">
+                    <option value="">Selecione uma conta...</option>
+                    {% for c in contas %}
+                    <option value="{{ c.id }}">{{ c.codigo }} - {{ c.descricao }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                <button type="button" onclick="closeModal('modal-add-regra')" style="padding: 10px 20px; background: transparent; border: 1px solid #444; color: #fff; border-radius: 8px; cursor: pointer;">Cancelar</button>
+                <button type="submit" class="btn-gold" style="padding: 10px 24px;">Salvar Regra</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); }
+    .tag { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+    .tag-fornecedor { background: rgba(76, 175, 125, 0.1); color: #4caf7d; }
+    .tag-banco { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+    .tag-texto_livre { background: rgba(246, 139, 31, 0.1); color: #f68b1f; }
+    .btn-outline-gold { background: transparent; border: 1px solid var(--accent-gold); color: var(--accent-gold); border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+    .btn-outline-gold:hover { background: rgba(212, 172, 107, 0.1); }
+</style>
+
+<script>
+function openModal(id) {
+    document.getElementById(id).style.display = 'flex';
+    document.getElementById('formRegra').reset();
+    document.getElementById('regraId').value = '';
+    document.getElementById('modal-title').innerText = 'Nova Regra';
+}
+
+function closeModal(id) {
+    document.getElementById(id).style.display = 'none';
+}
+
+function editRegra(id, tipo, padrao, conta_id, prioridade) {
+    document.getElementById('modal-add-regra').style.display = 'flex';
+    document.getElementById('modal-title').innerText = 'Editar Regra';
+    document.getElementById('regraId').value = id;
+    document.getElementById('regraTipo').value = tipo;
+    document.getElementById('regraPadrao').value = padrao;
+    document.getElementById('regraConta').value = conta_id;
+    document.getElementById('regraPrioridade').value = prioridade;
+}
+
+async function deleteRegra(id) {
+    if(!confirm('Tem certeza que deseja excluir esta regra?')) return;
+    
+    try {
+        const res = await fetch(`{{ url_for("regras.index") }}/${id}`, {
+            method: 'DELETE',
+            headers: { 'X-CSRFToken': '{{ csrf_token() }}' }
+        });
+        const data = await res.json();
+        if(res.ok && data.ok) {
+            location.reload();
+        } else {
+            alert(data.message || 'Erro ao excluir.');
+        }
+    } catch(err) {
+        alert('Erro de conexão.');
+    }
+}
+
+async function saveRegra(e) {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.innerText = 'Salvando...';
+    
+    const payload = {
+        id: document.getElementById('regraId').value || null,
+        tipo_regra: document.getElementById('regraTipo').value,
+        padrao: document.getElementById('regraPadrao').value,
+        conta_id: document.getElementById('regraConta').value,
+        prioridade: parseInt(document.getElementById('regraPrioridade').value) || 0
+    };
+    
+    try {
+        const res = await fetch('{{ url_for("regras.save_regra") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await res.json();
+        if(res.ok && data.ok) {
+            location.reload();
+        } else {
+            alert(data.message || 'Erro ao salvar.');
+            btn.disabled = false;
+            btn.innerText = 'Salvar Regra';
+        }
+    } catch(err) {
+        alert('Erro de conexão.');
+        btn.disabled = false;
+        btn.innerText = 'Salvar Regra';
+    }
+}
+</script>
+{% endblock %}

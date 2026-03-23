@@ -1,0 +1,38 @@
+{% extends 'layouts/base.html' %}
+{% block title %}Configurações — ContAI_PRO{% endblock %}
+
+{% block content %}
+<div style="display:flex; min-height:100vh;">
+    {% include 'partials/sidebar.html' with context %}
+
+    <main style="flex:1; padding:40px; overflow-y:auto;">
+        <header style="margin-bottom:32px;">
+            <h1 style="font-size:1.75rem; margin-bottom:4px;">Configurações</h1>
+            <p style="color:var(--text-secondary); font-size:0.9rem;">Sessão atual e informações do sistema</p>
+        </header>
+
+        <div class="card" style="max-width:480px;">
+            <h3 style="font-size:1rem; margin-bottom:20px; color:var(--text-secondary); font-weight:500; text-transform:uppercase; letter-spacing:0.06em;">Usuário Logado</h3>
+            <div style="display:flex; align-items:center; gap:20px; margin-bottom:24px;">
+                {% if user.avatar %}
+                <img src="{{ user.avatar }}" alt="{{ user.name }}" style="width:56px; height:56px; border-radius:50%; border:2px solid var(--accent-gold);">
+                {% else %}
+                <div style="width:56px; height:56px; border-radius:50%; background:var(--border-color); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:1.2rem; color:var(--accent-gold);">
+                    {{ user.name[0]|upper if user.name else '?' }}
+                </div>
+                {% endif %}
+                <div>
+                    <p style="font-weight:600; font-size:1rem;">{{ user.name }}</p>
+                    <p style="color:var(--text-secondary); font-size:0.85rem;">{{ user.email }}</p>
+                </div>
+            </div>
+            <div style="border-top:1px solid var(--border-color); padding-top:20px;">
+                <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:16px;">Domínio: <span style="color:var(--accent-gold);">@mendoncagalvao.com.br</span></p>
+                <a href="{{ url_for('auth.logout') }}" class="btn-gold" style="font-size:0.88rem; text-decoration:none; display:inline-flex; align-items:center; gap:8px;">
+                    <i data-lucide="log-out" style="width:16px;height:16px;"></i> Encerrar Sessão
+                </a>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

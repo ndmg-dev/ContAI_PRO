@@ -1,0 +1,298 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Plano de Contas - ContAI{% endblock %}
+
+{% block content %}
+<!-- Sidebar -->
+{% include 'partials/sidebar.html' with context %}
+
+<!-- Main Content Area -->
+<div style="flex: 1; padding: 40px; overflow-y: auto;">
+    <header style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px;">
+        <div>
+            <h1 style="font-size: 1.75rem; margin-bottom: 4px;">Plano de Contas</h1>
+            <p style="color: var(--text-secondary); font-size: 0.9rem;">Gerencie a estrutura contábil da empresa</p>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <input type="file" id="importPlanFile" accept=".pdf" style="display: none;" onchange="importPlan(event)">
+            <button onclick="document.getElementById('importPlanFile').click()" class="btn-outline-gold" style="padding: 10px 20px; display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="upload" style="width: 16px; height: 16px;"></i> Importar PDF
+            </button>
+            <button onclick="openModal('modal-add-conta')" class="btn-gold" style="padding: 10px 20px; display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="plus" style="width: 16px; height: 16px;"></i> Nova Conta
+            </button>
+        </div>
+    </header>
+
+    <div class="card" style="padding: 0; overflow: hidden;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead style="background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border-color);">
+                <tr>
+                    <th style="padding: 16px 24px; color: var(--text-secondary); font-weight: 500;">Código</th>
+                    <th style="padding: 16px 24px; color: var(--text-secondary); font-weight: 500;">Nome da Conta</th>
+                    <th style="padding: 16px 24px; color: var(--text-secondary); font-weight: 500;">Tipo</th>
+                    <th style="padding: 16px 24px; color: var(--text-secondary); font-weight: 500;">Natureza</th>
+                    <th style="padding: 16px 24px; text-align: right; color: var(--text-secondary); font-weight: 500;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if contas %}
+                    {% for conta in contas %}
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 16px 24px; font-family: monospace; color: var(--accent-gold);">{{ conta.codigo_estrutural }}</td>
+                        <td style="padding: 16px 24px;">{{ conta.descricao }}</td>
+                        <td style="padding: 16px 24px;">
+                            {% if conta.tipo %}
+                                <span class="tag tag-{{ conta.tipo|lower }}">{{ conta.tipo }}</span>
+                            {% else %}-{% endif %}
+                        </td>
+                        <td style="padding: 16px 24px;">
+                            {% if conta.natureza %}
+                                <span class="tag tag-{{ conta.natureza|lower }}">{{ conta.natureza }}</span>
+                            {% else %}-{% endif %}
+                        </td>
+                        <td style="padding: 16px 24px; text-align: right;">
+                            <button onclick="editConta('{{ conta.id }}', '{{ conta.codigo_estrutural }}', '{{ conta.descricao }}', '{{ conta.tipo or '' }}', '{{ conta.natureza or '' }}')" 
+                                    style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px;">
+                                <i data-lucide="edit-2" style="width: 16px; height: 16px;"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="5" style="padding: 40px; text-align: center; color: var(--text-secondary);">
+                            <i data-lucide="folder-open" style="width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+                            <p>O plano de contas desta empresa ainda está vazio.</p>
+                            <button onclick="openModal('modal-add-conta')" class="btn-outline-gold" style="margin-top: 16px; padding: 8px 16px;">
+                                Criar Estrutura Inicial
+                            </button>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal: Nova/Editar Conta -->
+<div id="modal-add-conta" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center;">
+    <div class="card" style="width: 100%; max-width: 500px; padding: 32px; position: relative;">
+        <button onclick="closeModal('modal-add-conta')" style="position: absolute; top: 20px; right: 20px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer;">
+            <i data-lucide="x"></i>
+        </button>
+        <h2 id="modal-title" style="margin-bottom: 24px;">Nova Conta Contábil</h2>
+        
+        <form id="formConta" onsubmit="saveConta(event)">
+            <input type="hidden" id="contaId">
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-size: 0.88rem; color: var(--text-secondary);">Código (ex: 1.1.01.001)</label>
+                <input type="text" id="contaCodigo" required style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff;">
+            </div>
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-size: 0.88rem; color: var(--text-secondary);">Nome da Conta</label>
+                <input type="text" id="contaNome" required style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff;">
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px;">
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 8px; font-size: 0.88rem; color: var(--text-secondary);">Tipo (Natureza de Saldo)</label>
+                    <select id="contaTipo" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff;">
+                        <option value="">Selecione...</option>
+                        <option value="DEBITO">Devedora (Débito)</option>
+                        <option value="CREDITO">Credora (Crédito)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 8px; font-size: 0.88rem; color: var(--text-secondary);">Classificação</label>
+                    <select id="contaNatureza" style="width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff;">
+                        <option value="">Selecione...</option>
+                        <option value="ATIVO">Ativo</option>
+                        <option value="PASSIVO">Passivo</option>
+                        <option value="RECEITA">Receita</option>
+                        <option value="DESPESA">Despesa (Custo)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                <button type="button" onclick="closeModal('modal-add-conta')" style="padding: 10px 20px; background: transparent; border: 1px solid #444; color: #fff; border-radius: 8px; cursor: pointer;">Cancelar</button>
+                <button type="submit" class="btn-gold" style="padding: 10px 24px;">Salvar Conta</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); }
+    .tag { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+    .tag-debito { background: rgba(224, 82, 82, 0.1); color: #e05252; }
+    .tag-credito { background: rgba(76, 175, 125, 0.1); color: #4caf7d; }
+    .tag-ativo { background: rgba(76, 175, 125, 0.1); color: #4caf7d; }
+    .tag-passivo { background: rgba(246, 139, 31, 0.1); color: #f68b1f; }
+    .tag-receita { background: rgba(76, 175, 125, 0.1); color: #4caf7d; }
+    .tag-despesa { background: rgba(224, 82, 82, 0.1); color: #e05252; }
+    .btn-outline-gold { background: transparent; border: 1px solid var(--accent-gold); color: var(--accent-gold); border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+    .btn-outline-gold:hover { background: rgba(212, 172, 107, 0.1); }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+</style>
+
+<script>
+function openModal(id) {
+    document.getElementById(id).style.display = 'flex';
+    document.getElementById('formConta').reset();
+    document.getElementById('contaId').value = '';
+    document.getElementById('modal-title').innerText = 'Nova Conta Contábil';
+}
+
+function closeModal(id) {
+    document.getElementById(id).style.display = 'none';
+}
+
+async function importPlan(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // reset input para permitir selecionar o mesmo arquivo novamente
+    e.target.value = '';
+    
+    // Mostra loading
+    const btn = document.querySelector('button[onclick="document.getElementById(\'importPlanFile\').click()"]');
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i data-lucide="loader" class="spin" style="width: 16px; height: 16px; animation: spin 1s linear infinite;"></i> Processando...';
+    btn.disabled = true;
+    
+    let logContainer = document.getElementById('import-logs');
+    if (!logContainer) {
+        logContainer = document.createElement('div');
+        logContainer.id = 'import-logs';
+        logContainer.style = 'margin-top: 24px; margin-bottom: 24px; padding: 16px; background: #111; border: 1px solid #333; border-radius: 8px; font-family: monospace; font-size: 0.85rem; color: #aaa; max-height: 250px; overflow-y: auto;';
+        // Insert inside the main card area, above the table
+        document.querySelector('.card').insertAdjacentElement('beforebegin', logContainer);
+    }
+    
+    logContainer.innerHTML = '<div style="color: var(--accent-gold); margin-bottom: 8px;">--- INICIANDO IMPORTAÇÃO DE PLANO DE CONTAS ---</div>';
+    logContainer.style.display = 'block';
+
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+        const res = await fetch('{{ url_for("plano_contas.importar_plano") }}', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token() }}' },
+            body: formData
+        });
+        
+        if (!res.ok) {
+            let errorMsg = 'Erro HTTP na resposta da API.';
+            try { const errObj = await res.json(); errorMsg = errObj.message; } catch(e) {}
+            logContainer.innerHTML += `<div style="color: #ff5555;">[ERRO FATAL] ${errorMsg}</div>`;
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+            return;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buffer = "";
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            buffer += decoder.decode(value, { stream: true });
+            
+            let parts = buffer.split('\n\n');
+            buffer = parts.pop();
+            
+            for (let part of parts) {
+                if (part.startsWith("data: ")) {
+                    const jsonStr = part.replace("data: ", "");
+                    try {
+                        const data = JSON.parse(jsonStr);
+                        const p = document.createElement('div');
+                        p.style.marginBottom = '6px';
+                        
+                        if (data.status === 'error') {
+                            p.innerHTML = `<span style="color: #ff5555; font-weight: bold;">[ERRO]</span> ${data.message || data.msg}`;
+                            logContainer.appendChild(p);
+                            btn.innerHTML = originalHtml;
+                            btn.disabled = false;
+                            logContainer.scrollTop = logContainer.scrollHeight;
+                            return;
+                        } else if (data.status === 'success') {
+                            p.innerHTML = `<span style="color: #55ff55; font-weight: bold;">[CONCLUÍDO]</span> ${data.message || data.msg}`;
+                            logContainer.appendChild(p);
+                            setTimeout(() => location.reload(), 2000);
+                        } else {
+                            p.innerHTML = `<span style="color: var(--accent-gold);">[Pendente...]</span> ${data.msg}`;
+                            logContainer.appendChild(p);
+                        }
+                        
+                        logContainer.scrollTop = logContainer.scrollHeight;
+                    } catch (e) {
+                         console.error("JSON parse error:", e, jsonStr);
+                    }
+                }
+            }
+        }
+    } catch(err) {
+        logContainer.innerHTML += `<div style="color: #ff5555;">[FALHA DE REDE] Perda de conexão. ${err}</div>`;
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+}
+
+
+function editConta(id, codigo, nome, tipo, natureza) {
+    document.getElementById('modal-add-conta').style.display = 'flex';
+    document.getElementById('modal-title').innerText = 'Editar Conta Contábil';
+    document.getElementById('contaId').value = id;
+    document.getElementById('contaCodigo').value = codigo;
+    document.getElementById('contaNome').value = nome;
+    document.getElementById('contaTipo').value = tipo;
+    document.getElementById('contaNatureza').value = natureza;
+}
+
+async function saveConta(e) {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.innerText = 'Salvando...';
+    
+    const payload = {
+        id: document.getElementById('contaId').value || null,
+        codigo: document.getElementById('contaCodigo').value,
+        nome: document.getElementById('contaNome').value,
+        tipo: document.getElementById('contaTipo').value,
+        natureza: document.getElementById('contaNatureza').value
+    };
+    
+    try {
+        const res = await fetch('{{ url_for("plano_contas.save_conta") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await res.json();
+        if(res.ok && data.ok) {
+            location.reload();
+        } else {
+            alert(data.message || 'Erro ao salvar conta.');
+            btn.disabled = false;
+            btn.innerText = 'Salvar Conta';
+        }
+    } catch(err) {
+        alert('Erro de conexão.');
+        btn.disabled = false;
+        btn.innerText = 'Salvar Conta';
+    }
+}
+</script>
+{% endblock %}

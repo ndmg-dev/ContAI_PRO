@@ -1,0 +1,162 @@
+{% extends 'layouts/base.html' %}
+{% block title %}Acesso — ContAI_PRO{% endblock %}
+
+{% block content %}
+<style>
+/* Animated login background */
+@keyframes gradientShift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+@keyframes floatUp {
+    0%   { opacity: 0; transform: translateY(24px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-ring {
+    0%   { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(172,141,90,0.4); }
+    70%  { transform: scale(1);    box-shadow: 0 0 0 14px rgba(172,141,90,0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(172,141,90,0); }
+}
+@keyframes shimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position: 200% center; }
+}
+
+.login-bg {
+    min-height: 100vh;
+    width: 100%;
+    background: linear-gradient(135deg, #0a0a0a 0%, #111108 40%, #0f0d04 70%, #0a0a0a 100%);
+    background-size: 400% 400%;
+    animation: gradientShift 12s ease infinite;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Decorative orb */
+.login-bg::before {
+    content: '';
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(172,141,90,0.06) 0%, transparent 70%);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    pointer-events: none;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+    padding: 48px 40px;
+    background: rgba(18,18,18,0.92);
+    border: 1px solid rgba(172,141,90,0.2);
+    border-radius: 18px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(172,141,90,0.08);
+    animation: floatUp 0.6s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+.login-logo {
+    max-width: 180px;
+    width: 100%;
+    height: auto;
+    margin: 0 auto 32px;
+    display: block;
+    filter: drop-shadow(0 2px 12px rgba(172,141,90,0.2));
+    animation: floatUp 0.5s 0.1s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+.btn-google {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 14px 24px;
+    background: linear-gradient(135deg, #ac8d5a 0%, #c8a96e 50%, #ac8d5a 100%);
+    background-size: 200% auto;
+    color: #000;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-position 0.4s, transform 0.15s, box-shadow 0.15s;
+    animation: floatUp 0.5s 0.25s cubic-bezier(0.22,1,0.36,1) both;
+    letter-spacing: 0.01em;
+}
+.btn-google:hover {
+    background-position: right center;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(172,141,90,0.35);
+}
+.btn-google:active { transform: translateY(0); }
+
+.divider {
+    width: 40px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent-gold), transparent);
+    margin: 0 auto 24px;
+    animation: floatUp 0.5s 0.08s both;
+}
+</style>
+
+<div class="login-bg">
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div style="background:{% if category=='error' %}rgba(92,32,32,0.95){% elif category=='success' %}rgba(26,58,26,0.95){% else %}rgba(20,35,55,0.95){% endif %}; padding:12px 24px; border-radius:10px; max-width:420px; width:100%; font-size:0.88rem; text-align:center; border:1px solid rgba(255,255,255,0.08); animation:floatUp 0.4s both;">
+                {{ message }}
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="login-card">
+        <!-- Logo -->
+        <img src="{{ url_for('static', filename='img/logo.png') }}"
+             alt="Mendonça Galvão Contadores"
+             class="login-logo">
+
+        <div class="divider"></div>
+
+        <p style="color:var(--text-secondary); font-size:0.78rem; margin-bottom:32px; letter-spacing:0.1em; text-transform:uppercase; animation:floatUp 0.5s 0.15s both;">
+            Sistema Contábil Inteligente
+        </p>
+
+        {% if has_google %}
+        <a href="{{ url_for('auth.google_oauth') }}" class="btn-google">
+            <svg width="20" height="20" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.2l6.7-6.7C35.8 2.2 30.2 0 24 0 14.7 0 6.7 5.4 2.7 13.4l7.8 6C12.2 13.5 17.6 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7-10.1 7-17.6z"/>
+                <path fill="#FBBC05" d="M10.5 28.6A14.6 14.6 0 0 1 9.5 24c0-1.6.3-3.1.8-4.6l-7.8-6A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.2z"/>
+                <path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7.6-5.9c-2 1.4-4.6 2.2-7.6 2.2-6.4 0-11.8-4.3-13.7-10.2l-7.9 6.2C6.7 42.5 14.7 48 24 48z"/>
+            </svg>
+            Entrar com Google Workspace
+        </a>
+        {% else %}
+        <div style="background:rgba(92,32,32,0.6); border:1px solid rgba(200,80,80,0.25); padding:16px; border-radius:10px; font-size:0.82rem; text-align:left; line-height:1.8;">
+            <strong style="color:#e05252;">⚠ Configuração incompleta</strong><br>
+            Adicione ao <code style="background:rgba(255,255,255,0.06); padding:1px 5px; border-radius:3px;">.env</code>:<br>
+            <code style="color:var(--accent-gold);">GOOGLE_CLIENT_ID</code><br>
+            <code style="color:var(--accent-gold);">GOOGLE_CLIENT_SECRET</code>
+        </div>
+        {% endif %}
+
+        <p style="margin-top:24px; font-size:0.75rem; color:var(--text-secondary); opacity:0.7; animation:floatUp 0.5s 0.35s both;">
+            Acesso restrito a <strong style="color:var(--accent-gold);">@mendoncagalvao.com.br</strong>
+        </p>
+    </div>
+</div>
+{% endblock %}

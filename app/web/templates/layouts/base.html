@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ContAI_PRO - Mendonça Galvão{% endblock %}</title>
+    <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}?v=6">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}?v=6">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script defer src="{{ url_for('static', filename='js/app_base.js') }}"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Main Content Area (Sidebar + Page Content) -->
+        <main class="content-wrapper" style="flex: 1; display: flex; min-height: 100vh; overflow: hidden;">
+            {% block content %}{% endblock %}
+        </main>
+
+        {% if session.user %}
+        <!-- Persistent Global Chat Panel — ContAI -->
+        <aside id="global-chat" data-user-name="{{ session.user.name }}" style="width: 340px; flex: 0 0 340px; border-left: 1px solid var(--border-color); display: flex; flex-direction: column; background: var(--bg-main);">
+            <div style="padding:20px 24px; border-bottom:1px solid var(--border-color); font-weight:600; font-size:0.95rem; display:flex; align-items:center; gap:10px;">
+                <i data-lucide="bot" style="color:var(--accent-gold); width:18px;height:18px;"></i>
+                <span>ContAI</span>
+                <span style="font-size:0.7rem; font-weight:400; color:var(--text-secondary); margin-left:4px;">Assistente Contábil</span>
+            </div>
+            <div id="chat-messages" style="flex:1; padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:12px;">
+                <!-- History will be loaded here -->
+            </div>
+            <div style="padding:16px; border-top:1px solid var(--border-color); display:flex; gap:8px;">
+                <input id="chat-input" type="text" placeholder="Pergunte ao ContAI..."
+                    style="flex:1; padding:11px 14px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-card); color:#fff; font-size:0.88rem; outline:none; transition:border-color 0.2s;"
+                    onkeydown="if(event.key==='Enter') sendChat()"
+                    onfocus="this.style.borderColor='var(--accent-gold)'"
+                    onblur="this.style.borderColor='var(--border-color)'">
+                <button onclick="sendChat()" class="btn-gold" style="padding:11px 16px; border-radius:8px; font-size:0.88rem; flex-shrink:0;">
+                    <i data-lucide="send" style="width:16px;height:16px;"></i>
+                </button>
+            </div>
+        </aside>
+        <script defer src="{{ url_for('static', filename='js/chat_panel.js') }}"></script>
+        {% endif %}
+    </div>
+
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+    </style>
+</body>
+</html>

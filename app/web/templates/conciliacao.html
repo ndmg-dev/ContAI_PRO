@@ -1,0 +1,662 @@
+{% extends 'layouts/base.html' %}
+{% block title %}Conciliação Bancária — ContAI_PRO{% endblock %}
+
+{% block content %}
+<style>
+    .btn-confirm {
+        background: rgba(76, 175, 125, 0.12);
+        color: #4caf7d;
+        border: 1px solid rgba(76, 175, 125, 0.5);
+        padding: 6px 14px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+        white-space: nowrap;
+    }
+
+    .btn-confirm:hover:not(:disabled) {
+        background: rgba(76, 175, 125, 0.28);
+        box-shadow: 0 0 0 2px rgba(76, 175, 125, 0.3);
+        transform: translateY(-1px);
+    }
+
+    .btn-exc {
+        background: rgba(224, 82, 82, 0.1);
+        color: #e05252;
+        border: 1px solid rgba(224, 82, 82, 0.45);
+        padding: 6px 14px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: background 0.15s, transform 0.1s;
+        white-space: nowrap;
+    }
+
+    .btn-exc:hover:not(:disabled) {
+        background: rgba(224, 82, 82, 0.25);
+        box-shadow: 0 0 0 2px rgba(224, 82, 82, 0.25);
+        transform: translateY(-1px);
+    }
+
+    button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    .score-badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 4px;
+        font-size: 0.78rem;
+        font-weight: 600;
+    }
+
+    .score-high {
+        background: rgba(76, 175, 125, 0.15);
+        color: #4caf7d;
+    }
+
+    .score-medium {
+        background: rgba(200, 180, 50, 0.12);
+        color: #c8c832;
+    }
+
+    .score-low {
+        background: rgba(224, 82, 82, 0.10);
+        color: #e05252;
+    }
+
+    .stat-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 20px 24px;
+        flex: 1;
+        min-width: 140px;
+    }
+
+    .stat-value {
+        font-size: 1.7rem;
+        font-weight: 700;
+        margin-bottom: 2px;
+    }
+
+    .stat-label {
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .pipeline-step {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+    }
+
+    .pipeline-step.active {
+        color: var(--accent-gold);
+        font-weight: 600;
+    }
+
+    .pipeline-arrow {
+        color: #444;
+        margin: 0 4px;
+    }
+
+    .status-tag {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.73rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .tag-conciliado {
+        background: rgba(76, 175, 125, 0.15);
+        color: #4caf7d;
+    }
+
+    .tag-excecao {
+        background: rgba(224, 82, 82, 0.12);
+        color: #e05252;
+    }
+
+    .btn-dominio {
+        background: #2a5a92;
+        /* Cor mais corporativa para exportação */
+        color: #fff;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 500;
+        font-size: 0.88rem;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-dominio:hover {
+        background: #346cb1;
+        transform: translateY(-1px);
+    }
+
+    .btn-dominio {
+        background: #2a5a92;
+        color: #fff;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 500;
+        font-size: 0.88rem;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-dominio:hover {
+        background: #346cb1;
+        transform: translateY(-1px);
+    }
+</style>
+
+<!-- Sidebar -->
+{% include 'partials/sidebar.html' with context %}
+
+<!-- Main Content -->
+<div style="flex: 1; padding: 40px; overflow-y: auto;">
+
+    <!-- Header -->
+    <header style="margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h1 style="font-size: 1.75rem; margin-bottom: 4px;">Conciliação Bancária</h1>
+            {% if report and periodo_ativo %}
+            <div style="font-size: 0.9rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="calendar" style="width: 14px; height: 14px;"></i>
+                Competência: <strong style="color: var(--accent-gold);">{{ periodo_ativo }}</strong>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if report and periodos %}
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <label style="font-size: 0.85rem; color: var(--text-secondary);">Mudar Período:</label>
+            <select onchange="location.href='?periodo=' + this.value"
+                style="background: #111; color: #fff; border: 1px solid #333; padding: 8px 16px; border-radius: 8px; font-size: 0.88rem; outline: none; cursor: pointer;">
+                {% for p in periodos %}
+                <option value="{{ p }}" {% if p==periodo_ativo %}selected{% endif %}>{{ p }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+    </header>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div style="margin-bottom:20px;">
+        {% for category, message in messages %}
+        {% set bg = '#5c2020' if category == 'error' or category == 'danger' else ('#1a3a1a' if category == 'success'
+        else '#1a2a3a') %}
+        <div
+            style="background:{{ bg }}; padding:12px 20px; border-radius:8px; margin-bottom:10px; font-size:0.88rem; color: #fff;">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    {% if report %}
+    <!-- ── KPI Cards ── -->
+    <div style="display: flex; gap: 16px; margin-bottom: 28px; flex-wrap: wrap;">
+
+        <div class="stat-card">
+            <div class="stat-value" style="color: var(--text-primary);">{{ report.total_lancamentos }}</div>
+            <div class="stat-label">Lançamentos Bancários</div>
+        </div>
+
+        <div class="stat-card">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <div class="stat-value" style="color: #4caf7d;">{{ report.conciliados }}</div>
+                <i data-lucide="check-circle" style="width: 16px; height: 16px; color: #4caf7d;"></i>
+            </div>
+            <div class="stat-label">Conciliados</div>
+        </div>
+
+        <div class="stat-card">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <div class="stat-value" style="color: #e05252;">{{ report.excecoes }}</div>
+                <i data-lucide="alert-circle" style="width: 16px; height: 16px; color: #e05252;"></i>
+            </div>
+            <div class="stat-label">Exceções</div>
+        </div>
+
+        <div class="stat-card">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <div class="stat-value" style="color: var(--accent-gold);">{{ report.taxa_conciliacao }}%</div>
+                <i data-lucide="percent" style="width: 16px; height: 16px; color: var(--accent-gold);"></i>
+            </div>
+            <div class="stat-label">Taxa</div>
+        </div>
+
+        <div class="stat-card">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <div class="stat-value" style="color: var(--text-primary); font-size: 1.15rem;">
+                    R$ {{ "{:,.2f}".format(report.valor_total_ofx).replace(",", "X").replace(".", ",").replace("X", ".")
+                    }}
+                </div>
+                <i data-lucide="dollar-sign" style="width: 16px; height: 16px; color: var(--text-secondary);"></i>
+            </div>
+            <div class="stat-label">Total Bancário</div>
+        </div>
+
+        <div class="stat-card">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <div class="stat-value" style="color: #e05252; font-size: 1.15rem;">
+                    R$ {{ "{:,.2f}".format(report.valor_pendente).replace(",", "X").replace(".", ",").replace("X", ".")
+                    }}
+                </div>
+                <i data-lucide="clock" style="width: 16px; height: 16px; color: #e05252;"></i>
+            </div>
+            <div class="stat-label">Pendente</div>
+        </div>
+    </div>
+
+    <!-- ── Match Table ── -->
+    <div class="card" style="margin-bottom: 32px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+            <h3
+                style="font-size: 1rem; color: var(--text-secondary); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; margin: 0;">
+                Cruzamento Banco/Planilha × PDFs/Docs
+                <span style="color: var(--accent-gold);">({{ report.detalhes|length }})</span>
+            </h3>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <a href="{{ url_for('conciliacao.exportar_dominio') }}" class="btn-dominio"
+                    title="Gera arquivo p/ importar no Domínio">
+                    <i data-lucide="download" style="width: 16px; height: 16px;"></i> Exportar p/ Domínio
+                </a>
+
+                <span style="font-size: 0.78rem; color: var(--text-secondary);">
+                    <span style="color: #4caf7d; font-weight: 700;">●</span> Conciliado ≥ 70%
+                </span>
+                <span style="font-size: 0.78rem; color: var(--text-secondary);">
+                    <span style="color: #e05252; font-weight: 700;">●</span> Exceção &lt; 70%
+                </span>
+                {% if report.conciliados > 0 %}
+                <button id="btn-confirmar-todos" onclick="confirmarTodos(this)" style="padding: 7px 18px; background: rgba(76,175,125,0.15); color: #4caf7d;
+                           border: 1px solid rgba(76,175,125,0.5); border-radius: 6px;
+                           cursor: pointer; font-size: 0.82rem; font-weight: 600;
+                           transition: background 0.15s;">
+                    ✓ Confirmar {{ report.conciliados }} conciliados
+                </button>
+                {% endif %}
+
+                <button id="btn-auto-classificar" onclick="autoClassificar(this)" style="padding: 7px 18px; background: rgba(212, 172, 107, 0.1); color: var(--accent-gold);
+                           border: 1px solid rgba(212, 172, 107, 0.4); border-radius: 8px;
+                           cursor: pointer; font-size: 0.82rem; font-weight: 600;
+                           display: flex; align-items: center; gap: 8px; transition: all 0.2s;">
+                    <i data-lucide="sparkles" style="width: 14px; height: 14px;"></i>
+                    Classificar Lançamentos
+                </button>
+            </div>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.84rem;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                    <th
+                        style="padding: 10px 12px; text-align: left; color: var(--text-secondary); font-weight: 500; width: 35%;">
+                        Planilha/Extrato (Banco)</th>
+                    <th
+                        style="padding: 10px 12px; text-align: left; color: var(--text-secondary); font-weight: 500; width: 35%;">
+                        Comprovante PDF correspondente</th>
+                    <th style="padding: 10px 12px; text-align: center; color: var(--text-secondary); font-weight: 500;">
+                        Score</th>
+                    <th style="padding: 10px 12px; text-align: center; color: var(--text-secondary); font-weight: 500;">
+                        Status</th>
+                    <th style="padding: 10px 12px; text-align: center; color: var(--text-secondary); font-weight: 500;">
+                        Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in report.detalhes %}
+                {% set l = m.lancamento_ofx %}
+                {% set d = m.lancamento_pdf %}
+                {% set score_pct = (m.score * 100)|int %}
+
+                <tr id="row-{{ m.lancamento_id }}"
+                    style="border-bottom: 1px solid #222; transition: opacity 0.4s;
+                    {% if m.status == 'conciliado' %}background: rgba(76,175,125,0.04);{% else %}background: rgba(224,82,82,0.02);{% endif %}">
+
+                    <!-- Lado Bancario (Excel / OFX) -->
+                    <td style="padding: 12px;">
+                        <span style="display: block; font-weight: 500; font-size: 0.82rem;">{{ l.historico or '—'
+                            }}</span>
+                        <span style="font-size: 0.75rem; color: var(--text-secondary);">
+                            {{ l.data_lancamento or '' }} •
+                            {% if l.tipo_dc == 'credito' %}
+                            <span style="color:#4caf7d;">+R$ {{ l.valor|formato_brl }}</span>
+                            {% else %}
+                            <span style="color:#e05252;">-R$ {{ l.valor|formato_brl }}</span>
+                            {% endif %}
+                        </span>
+                        <span style="font-size: 0.7rem; color: #555; margin-top: 2px; display: block;">{{ l.origem or ''
+                            }}</span>
+                        {% if l.plano_contas %}
+                        <div
+                            style="margin-top: 6px; padding: 4px 8px; background: rgba(212, 172, 107, 0.08); border: 1px solid rgba(212, 172, 107, 0.2); border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;">
+                            <i data-lucide="tag" style="width: 12px; height: 12px; color: var(--accent-gold);"></i>
+                            <span
+                                style="font-size: 0.72rem; color: var(--accent-gold); font-family: monospace; font-weight: bold;">{{
+                                l.plano_contas.codigo_estrutural }}</span>
+                            <span style="font-size: 0.72rem; color: var(--text-secondary);">{{ l.plano_contas.descricao
+                                }}</span>
+                        </div>
+                        {% endif %}
+                    </td>
+
+                    <!-- Lado Documental (PDF / XML) -->
+                    <td style="padding: 12px; font-size: 0.82rem;">
+                        {% if d %}
+                        <span style="display: block; font-weight: 500;">{{ d.historico or '—' }}</span>
+                        <span style="font-size: 0.75rem; color: var(--text-secondary);">
+                            {{ d.data_lancamento or '' }} •
+                            {% if d.tipo_dc == 'credito' %}
+                            <span style="color:#4caf7d;">+R$ {{ d.valor|formato_brl }}</span>
+                            {% else %}
+                            <span style="color:#e05252;">-R$ {{ d.valor|formato_brl }}</span>
+                            {% endif %}
+                        </span>
+                        <span style="font-size: 0.7rem; color: #555; margin-top: 2px; display: block;">{{ d.origem or ''
+                            }}</span>
+                        {% else %}
+                        <span style="color: #c0392b; font-size: 0.8rem; font-style: italic;">⚠ Sem comprovante
+                            correspondente no PDF</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Score -->
+                    <td style="padding: 12px; text-align: center;">
+                        {% if d %}
+                        <span style="font-weight: 700; font-size: 0.9rem;
+                                {% if score_pct >= 85 %}color: #4caf7d;
+                                {% elif score_pct >= 70 %}color: #d4ac6b;
+                                {% else %}color: #e05252;{% endif %}">
+                            {{ score_pct }}%
+                        </span>
+                        {% else %}
+                        <span style="color:#555;">—</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Status -->
+                    <td style="padding: 12px; text-align: center;">
+                        <span
+                            class="status-tag {% if m.status == 'conciliado' %}tag-conciliado{% else %}tag-excecao{% endif %}">
+                            {{ 'Conciliado' if m.status == 'conciliado' else 'Exceção' }}
+                        </span>
+                    </td>
+
+                    <!-- Actions -->
+                    <td style="padding: 12px; text-align: center;">
+                        <div style="display: flex; gap: 8px; justify-content: center;">
+                            <button class="btn-confirm" onclick="resolver('{{ m.lancamento_id }}', this)">
+                                ✓ Confirmar
+                            </button>
+                            <button class="btn-exc" onclick="excecao('{{ m.lancamento_id }}', this)">
+                                ✕ Exceção
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% else %}
+    <!-- ── Estado vazio: aguardando OFX + PDF ── -->
+    <div class="card" style="text-align: center; padding: 64px 32px; margin-bottom: 32px;">
+        <div
+            style="background: rgba(212, 172, 107, 0.1); width: 80px; height: 80px; border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px;">
+            <i data-lucide="bar-chart-2" style="width: 40px; height: 40px; color: var(--accent-gold);"></i>
+        </div>
+        <h2 style="font-size: 1.1rem; margin-bottom: 8px; color: var(--text-primary);">
+            Nenhum cruzamento disponível
+        </h2>
+        <p style="color: var(--text-secondary); font-size: 0.88rem; max-width: 400px; margin: 0 auto 24px;">
+            Para iniciar a conciliação, importe um <strong>extrato OFX</strong> (arquivo do banco) e um
+            <strong>extrato PDF</strong> para a mesma empresa. O sistema cruzará os lançamentos automaticamente.
+        </p>
+        <a href="{{ url_for('documentos.index') }}" style="display: inline-block; padding: 10px 24px; background: var(--accent-gold); color: #000;
+                  border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 0.88rem;">
+            Ir para Importação →
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- ── Lançamentos OFX Pendentes (raw list) ── -->
+    {% if pendentes %}
+
+    <div class="card">
+        <h3 style="font-size: 1rem; margin-bottom: 20px; color: var(--text-secondary); font-weight: 500;
+                   text-transform: uppercase; letter-spacing: 0.06em;">
+            Registros Financeiros (Base) Importados
+            <span style="color: var(--accent-gold);">({{ pendentes|length }})</span>
+        </h3>
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.84rem;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                    <th style="padding: 10px; text-align: left; color: var(--text-secondary); font-weight: 500;">Data
+                    </th>
+                    <th style="padding: 10px; text-align: left; color: var(--text-secondary); font-weight: 500;">
+                        Histórico</th>
+                    <th style="padding: 10px; text-align: right; color: var(--text-secondary); font-weight: 500;">Valor
+                    </th>
+                    <th style="padding: 10px; text-align: left; color: var(--text-secondary); font-weight: 500;">Origem
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for l in pendentes %}
+                <tr style="border-bottom: 1px solid #1e1e1e;">
+                    <td style="padding: 10px; color: var(--text-secondary);">{{ l.data_lancamento or '—' }}</td>
+                    <td style="padding: 10px;">{{ l.historico or '—' }}</td>
+                    <td
+                        style="padding: 10px; text-align: right; color: {% if l.tipo_dc == 'credito' %}#4caf7d{% else %}#e05252{% endif %};">
+                        {{ '+' if l.tipo_dc == 'credito' else '-' }}{{ l.valor|formato_brl }}
+                    </td>
+                    <td style="padding: 10px;">
+                        <span style="background: rgba(172,141,90,0.12); color: var(--accent-gold);
+                                     padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">
+                            {{ l.origem or '—' }}
+                        </span>
+                        {% if l.plano_contas %}
+                        <div style="margin-top: 6px; font-size: 0.75rem; color: #4caf7d;">
+                            <i data-lucide="share-2"
+                                style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i>
+                            {{ l.plano_contas.codigo_estrutural }} - {{ l.plano_contas.descricao }}
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+
+
+    <script defer src="{{ url_for('static', filename='js/conciliacao_actions.js') }}"></script>
+    <script>
+        let isProcessingAI = false;
+
+        function openAIModal() {
+            if (isProcessingAI) return;
+            document.getElementById('aiModal').style.display = 'flex';
+            document.getElementById('aiProgressArea').style.display = 'none';
+            document.getElementById('aiFooterActions').style.display = 'flex';
+            document.getElementById('aiModalMsg').style.display = 'block';
+            lucide.createIcons();
+        }
+
+        function closeAIModal() {
+            if (isProcessingAI) return;
+            document.getElementById('aiModal').style.display = 'none';
+        }
+
+        async function runAutoClassificar() {
+            isProcessingAI = true;
+            const btn = document.getElementById('btnStartAI');
+            const progressArea = document.getElementById('aiProgressArea');
+            const footer = document.getElementById('aiFooterActions');
+            const modalMsg = document.getElementById('aiModalMsg');
+            const progressBar = document.getElementById('aiProgressBar');
+            const statusMsg = document.getElementById('aiStatusMsg');
+            const percentMsg = document.getElementById('aiProgressPercent');
+
+            footer.style.display = 'none';
+            modalMsg.style.display = 'none';
+            progressArea.style.display = 'block';
+            statusMsg.innerText = "Conectando ao OpenAI (GPT-4o-mini)...";
+            progressBar.style.width = "15%";
+            percentMsg.innerText = "15%";
+
+            try {
+                // Simulação de progresso inicial
+                setTimeout(() => { if (isProcessingAI) { statusMsg.innerText = "Mapeando Plano de Contas..."; progressBar.style.width = "40%"; percentMsg.innerText = "40%"; } }, 1500);
+                setTimeout(() => { if (isProcessingAI) { statusMsg.innerText = "Analisando históricos e valores..."; progressBar.style.width = "70%"; percentMsg.innerText = "70%"; } }, 3500);
+
+                const res = await window.csrfFetch('/conciliacao/auto-classificar', { method: 'POST' });
+                const data = await res.json();
+
+                if (res.ok && data.ok) {
+                    statusMsg.innerText = "Finalizado! Gravando classificações...";
+                    progressBar.style.width = "100%";
+                    percentMsg.innerText = "100%";
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    throw new Error(data.message || 'Falha na classificação');
+                }
+            } catch (e) {
+                statusMsg.innerText = "Erro: " + e.message;
+                statusMsg.style.color = "#e05252";
+                percentMsg.style.display = "none";
+                progressBar.style.background = "#e05252";
+                isProcessingAI = false;
+                setTimeout(() => {
+                    if (!isProcessingAI) {
+                        closeAIModal();
+                        alert(e.message);
+                    }
+                }, 3000);
+            }
+        }
+
+        // Override do botão original chamando openAIModal
+        function autoClassificar(btn) {
+            openAIModal();
+        }
+
+        async function confirmarTodos(btn) {
+            if (!confirm(`Confirmar todos os lançamentos conciliados de uma vez?`)) return;
+            btn.disabled = true;
+            btn.textContent = 'Confirmando...';
+            try {
+                const res = await window.csrfFetch('/conciliacao/confirmar-todos', { method: 'POST' });
+                const data = await res.json().catch(() => null);
+                if (res.ok && data?.ok) {
+                    btn.textContent = `✓ ${data.data?.confirmados ?? ''} confirmados!`;
+                    btn.style.background = 'rgba(76,175,125,0.35)';
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    btn.disabled = false;
+                    btn.textContent = '✓ Confirmar todos conciliados';
+                    alert('Erro: ' + (data?.message || 'Falha desconhecida'));
+                }
+            } catch (e) {
+                btn.disabled = false;
+                btn.textContent = '✓ Confirmar todos conciliados';
+                alert('Erro de rede: ' + e.message);
+            }
+        }
+    </script>
+
+    <!-- Modal de Confirmação IA -->
+    <div id="aiModal"
+        style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
+        <div
+            style="background: #1a1a1a; width: 90%; max-width: 480px; padding: 36px; border-radius: 20px; border: 1px solid rgba(172,141,90,0.3); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7); text-align: center; animation: modalIn 0.3s ease-out;">
+            <style>
+                @keyframes modalIn {
+                    from {
+                        transform: scale(0.95);
+                        opacity: 0;
+                    }
+
+                    to {
+                        transform: scale(1);
+                        opacity: 1;
+                    }
+                }
+
+                @keyframes pulseGold {
+                    0% {
+                        box-shadow: 0 0 0 0 rgba(172, 141, 90, 0.4);
+                    }
+
+                    70% {
+                        box-shadow: 0 0 0 10px rgba(172, 141, 90, 0);
+                    }
+
+                    100% {
+                        box-shadow: 0 0 0 0 rgba(172, 141, 90, 0);
+                    }
+                }
+            </style>
+
+            <div
+                style="width: 70px; height: 70px; background: rgba(172,141,90,0.1); color: var(--accent-gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; animation: pulseGold 2s infinite;">
+                <i data-lucide="brain-circuit" style="width: 35px; height: 35px;"></i>
+            </div>
+
+            <h3 style="font-size: 1.5rem; margin-bottom: 12px; color: #fff; font-weight: 700;">Inteligência ContAI</h3>
+
+            <p style="color: #999; line-height: 1.6; margin-bottom: 30px; font-size: 1rem;" id="aiModalMsg">
+                Deseja que a ContAI analise os lançamentos pendentes e sugira as contas contábeis automaticamente?
+            </p>
+
+            <div id="aiProgressArea" style="display: none; margin-bottom: 30px; text-align: left;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span id="aiStatusMsg"
+                        style="font-size: 0.82rem; color: var(--accent-gold); font-weight: 500;">Iniciando
+                        análise...</span>
+                    <span id="aiProgressPercent" style="font-size: 0.82rem; color: #666;">30%</span>
+                </div>
+                <div style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden;">
+                    <div id="aiProgressBar"
+                        style="width: 0%; height: 100%; background: linear-gradient(90deg, #ac8d5a, #d4af37); border-radius: 10px; transition: width 0.5s ease-out;">
+                    </div>
+                </div>
+            </div>
+
+            <div id="aiFooterActions" style="display: flex; gap: 14px; justify-content: center;">
+                <button onclick="closeAIModal()"
+                    style="background: rgba(255,255,255,0.03); color: #888; border: 1px solid #333; padding: 12px 28px; border-radius: 10px; cursor: pointer; transition: all 0.2s; font-weight: 500;">Cancelar</button>
+                <button id="btnStartAI" onclick="runAutoClassificar()"
+                    style="background: var(--accent-gold); color: #000; border: none; padding: 12px 28px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(172,141,90,0.3);">Iniciar
+                    Análise</button>
+            </div>
+        </div>
+    </div>
+
+    {% endblock %}

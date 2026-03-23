@@ -1,0 +1,17 @@
+flask
+flask-session
+flask-wtf
+python-dotenv
+supabase
+langchain
+langchain-core
+langchain-openai
+pydantic
+gunicorn
+pandas
+openpyxl
+python-jose
+requests
+google-auth-oauthlib
+google-auth
+pdfplumber

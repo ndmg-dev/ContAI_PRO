@@ -1,0 +1,67 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Integrações — ContAI{% endblock %}
+
+{% block content %}
+<!-- Sidebar -->
+{% include 'partials/sidebar.html' with context %}
+
+<div style="flex: 1; padding: 40px; overflow-y: auto;">
+    <header style="margin-bottom: 40px;">
+        <h1 style="font-size: 1.75rem; margin-bottom: 8px;">Integrações</h1>
+        <p style="color: var(--text-secondary); font-size: 0.95rem;">Conecte o ContAI com seus sistemas contábeis.</p>
+    </header>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 24px;">
+        <!-- Card Domínio -->
+        <div class="card" style="display: flex; flex-direction: column; gap: 20px; border-top: 4px solid #f68b1f;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="background: rgba(246, 139, 31, 0.1); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                        <i data-lucide="layers" style="color: #f68b1f; width: 24px; height: 24px;"></i>
+                    </div>
+                    <div>
+                        <h3 style="font-size: 1.1rem; margin: 0;">Domínio Sistemas</h3>
+                        <span style="font-size: 0.75rem; color: #4caf7d; background: rgba(76,175,125,0.1); padding: 2px 8px; border-radius: 4px; margin-top: 4px; display: inline-block;">EM BREVE (API)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <p style="color: var(--text-secondary); font-size: 0.88rem; margin: 0; line-height: 1.5;">
+                A integração direta via API Onvio está em manutenção. 
+                Utilize o fluxo de <strong>Exportação de Arquivos</strong> na aba de Conciliação para importar dados no Domínio.
+            </p>
+
+            <div style="margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border-color);">
+                <button disabled style="width: 100%; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-secondary); cursor: not-allowed; border: 1px solid var(--border-color);">
+                    Integração via API Indisponível
+                </button>
+            </div>
+        </div>
+
+        <!-- Card SIEG -->
+        <div class="card" style="opacity: 0.5;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                <div style="background: rgba(255, 255, 255, 0.05); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                    <i data-lucide="download" style="color: #777; width: 24px; height: 24px;"></i>
+                </div>
+                <div>
+                    <h3 style="font-size: 1.1rem; margin: 0;">SIEG</h3>
+                    <span style="font-size: 0.75rem; color: #777; background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 4px; margin-top: 4px; display: inline-block;">EM DESENVOLVIMENTO</span>
+                </div>
+            </div>
+            <p style="color: #666; font-size: 0.88rem;">Sincronização automática de XMLs de Notas Fiscais diretamente da SEFAZ e prefeituras.</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    }
+</style>
+{% endblock %}
