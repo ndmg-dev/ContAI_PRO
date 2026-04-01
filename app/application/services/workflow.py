@@ -3,10 +3,16 @@ Workflow Service
 Manages the operational pipeline state machine:
 Importação → Cruzamento → Resolução → Exceção → Finalização
 """
+import os
 from enum import Enum
 from typing import Optional
 from app.infrastructure.supabase.client import db_adapter
 from app.infrastructure.logger import logger
+
+# UUID sentinela para operações server-side (sem sessão de usuário ativa).
+# Configure a variável SYSTEM_USER_ID no .env para um UUID válido da tabela auth.users,
+# ou um UUID fixo caso sua RLS não faça join com auth.users.
+_SYSTEM_USER_ID = os.environ.get('SYSTEM_USER_ID', '00000000-0000-0000-0000-000000000000')
 
 
 class WorkflowStatus(str, Enum):
@@ -41,11 +47,13 @@ def advance_lancamento(lancamento_id: str, to_status: WorkflowStatus, notas: str
         logger.exception(f"[Workflow] error updating lancamento {lancamento_id}: {e}")
         return False
 
-    # Audit log is best-effort — don't fail the whole operation if table is missing
+    # Audit log é best-effort — não falha a operação se houver problema na tabela.
+    # user_id é obrigatório (NOT NULL) — usamos o UUID do sistema para ops server-side.
     try:
         client.table('audit_logs').insert({
             'tp_origem': 'workflow',
             'acao': f'status_changed:{to_status.value}',
+            'user_id': _SYSTEM_USER_ID,
             'detalhes': {
                 'lancamento_id': lancamento_id,
                 'novo_status': to_status.value,
@@ -53,7 +61,7 @@ def advance_lancamento(lancamento_id: str, to_status: WorkflowStatus, notas: str
             },
         }).execute()
     except Exception as e:
-        logger.warning(f"[Workflow] audit_log insert skipped (table may not exist): {e}")
+        logger.warning(f"[Workflow] audit_log insert skipped: {e}")
 
     return True
 

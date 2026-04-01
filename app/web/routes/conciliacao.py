@@ -182,7 +182,7 @@ def exportar_dominio():
             flash("Não existem lançamentos concluídos para exportar.", "info")
             return redirect(url_for('conciliacao.index'))
             
-        txt_content = DominioExportService.generate_txt(lancamentos)
+        txt_content = DominioExportService.generate_txt(lancamentos, empresa=active_empresa)
         
         # Gera o arquivo para download
         filename = f"Dominio_ContAI_{active_empresa.get('nome','empresa')}_{datetime.now().strftime('%Y%m%d%H%M')}.txt"
