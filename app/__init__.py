@@ -1,6 +1,6 @@
 from flask import Flask
 from app.config import Config
-from flask_wtf.csrf import CSRFProtect
+from app.extensions import csrf
 from flask_cors import CORS
 
 def create_app(config_class=Config):
@@ -10,8 +10,14 @@ def create_app(config_class=Config):
     app.config.from_object(config_class)
     config_class.validate()
 
-    # CSRF protection (forms + fetch POSTs)
-    CSRFProtect(app)
+    # CSRF protection (forms + fetch POSTs). Desliga a checagem automatica
+    # global (WTF_CSRF_CHECK_DEFAULT=False) porque ela roda cedo demais -
+    # antes de login_required decidir se a request veio autenticada por
+    # cookie de sessao (precisa de CSRF) ou por Bearer JWT do CRM (stateless,
+    # nao precisa). login_required chama csrf.protect() manualmente so no
+    # caso de sessao. Ver app/web/routes/decorators.py.
+    app.config['WTF_CSRF_CHECK_DEFAULT'] = False
+    csrf.init_app(app)
 
     # CORS: only for the JSON API used by the CRM_MG React frontend
     # (/api/*). The standalone Jinja app keeps using same-origin session
