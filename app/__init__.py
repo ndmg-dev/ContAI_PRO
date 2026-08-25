@@ -19,12 +19,18 @@ def create_app(config_class=Config):
     app.config['WTF_CSRF_CHECK_DEFAULT'] = False
     csrf.init_app(app)
 
-    # CORS: only for the JSON API used by the CRM_MG React frontend
-    # (/api/*). The standalone Jinja app keeps using same-origin session
+    # CORS: for the JSON API used by the CRM_MG React frontend (/api/*) and
+    # /empresas/* (company selector — legacy route, predates /api/*, but
+    # already Bearer-aware via login_required, so the CRM frontend calls it
+    # directly). The standalone Jinja app keeps using same-origin session
     # cookies and is unaffected — CORS is not applied globally.
     CORS(
         app,
         resources={r"/api/*": {"origins": [
+            "https://crmmg.mendoncagalvao.com.br",
+            "http://localhost:3000",
+            "http://localhost:5173",
+        ]}, r"/empresas/*": {"origins": [
             "https://crmmg.mendoncagalvao.com.br",
             "http://localhost:3000",
             "http://localhost:5173",
