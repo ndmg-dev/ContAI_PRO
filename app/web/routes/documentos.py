@@ -8,6 +8,7 @@ import re
 import unicodedata
 from flask import Blueprint, render_template, session, redirect, url_for, request, flash, jsonify
 from app.web.routes.decorators import login_required
+from app.web.routes.request_context import get_active_empresa_id
 from app.infrastructure.supabase.client import db_adapter
 from app.infrastructure.logger import logger
 
@@ -31,13 +32,8 @@ def slugify(value: str) -> str:
 
 # ─── Pages ────────────────────────────────────────────────────────────────────
 
-@bp.route('/documentos')
-@login_required
-def index():
+def _compute_documentos(active_id: str) -> list:
     client = db_adapter.get_client()
-    active_empresa = session.get('active_empresa', {})
-    active_id = active_empresa.get('id')
-
     documentos = []
     if client and active_id:
         try:
@@ -48,8 +44,24 @@ def index():
             documentos = resp.data or []
         except Exception as e:
             logger.error(f"[Documentos] erro ao buscar documentos: {e}")
+    return documentos
 
+
+@bp.route('/documentos')
+@login_required
+def index():
+    active_id = get_active_empresa_id()
+    documentos = _compute_documentos(active_id)
     return render_template('documentos.html', documentos=documentos, user=session.get('user'))
+
+
+@bp.route('/api/documentos')
+@login_required
+def api_index():
+    """JSON: { ok, data: [ { id, empresa_id, nome_original, storage_path, tipo, status, created_at, ... } ] }"""
+    active_id = get_active_empresa_id()
+    documentos = _compute_documentos(active_id)
+    return jsonify({'ok': True, 'data': documentos})
 
 
 # ─── API: CNPJ Lookup ─────────────────────────────────────────────────────────

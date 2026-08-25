@@ -1,4 +1,5 @@
 flask
+flask-cors
 flask-session
 flask-wtf
 python-dotenv
@@ -11,6 +12,7 @@ gunicorn
 pandas
 openpyxl
 python-jose
+PyJWT
 requests
 google-auth-oauthlib
 google-auth

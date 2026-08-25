@@ -1,44 +1,68 @@
 from flask import Blueprint, render_template, request, jsonify, session, flash, redirect, url_for, Response
 import time
 from app.web.routes.decorators import login_required
+from app.web.routes.request_context import get_active_empresa_id
 from app.infrastructure.supabase.client import db_adapter
 from app.infrastructure.logger import logger
 
 bp = Blueprint('plano_contas', __name__)
 
-@bp.route('/plano-contas')
-@login_required
-def index():
+
+def _compute_contas(active_id: str) -> list:
     client = db_adapter.get_client()
-    active_empresa = session.get('active_empresa', {})
-    
-    if not active_empresa:
-        return redirect(url_for('documentos.index'))
-        
     contas = []
-    if client:
+    if client and active_id:
         try:
-            # Busca todas as contas ordenadas pelo código
             resp = client.table('plano_contas') \
                          .select('*') \
-                         .eq('empresa_id', active_empresa['id']) \
+                         .eq('empresa_id', active_id) \
                          .order('codigo_estrutural') \
                          .execute()
             contas = resp.data or []
         except Exception as e:
             logger.error(f"Erro ao buscar plano de contas: {e}")
-            flash(f"Erro ao carregar o plano de contas: {e}", "error")
+            raise
+    return contas
+
+
+@bp.route('/plano-contas')
+@login_required
+def index():
+    active_id = get_active_empresa_id()
+
+    if not active_id:
+        return redirect(url_for('documentos.index'))
+
+    try:
+        contas = _compute_contas(active_id)
+    except Exception as e:
+        contas = []
+        flash(f"Erro ao carregar o plano de contas: {e}", "error")
 
     return render_template('plano_contas.html', contas=contas)
+
+
+@bp.route('/api/plano-contas')
+@login_required
+def api_index():
+    """JSON: { ok, data: [ { id, empresa_id, codigo, codigo_estrutural, descricao, tipo, natureza, nivel, ... } ] }"""
+    active_id = get_active_empresa_id()
+    if not active_id:
+        return jsonify({'ok': False, 'message': 'Empresa não selecionada', 'code': 'NO_EMPRESA'}), 400
+    try:
+        contas = _compute_contas(active_id)
+    except Exception as e:
+        return jsonify({'ok': False, 'message': str(e)}), 500
+    return jsonify({'ok': True, 'data': contas})
 
 @bp.route('/plano-contas', methods=['POST'])
 @login_required
 def save_conta():
     """Adiciona ou atualiza uma conta no plano de contas."""
-    active_empresa = session.get('active_empresa', {})
-    if not active_empresa:
+    active_id = get_active_empresa_id()
+    if not active_id:
         return jsonify({'ok': False, 'message': 'Empresa não selecionada'}), 400
-        
+
     data = request.get_json(silent=True) or {}
     codigo = data.get('codigo', '').strip()
     nome = data.get('nome', '').strip()
@@ -56,7 +80,7 @@ def save_conta():
          return jsonify({'ok': False, 'message': 'Erro de conexão BD'}), 500
 
     payload = {
-        'empresa_id': active_empresa['id'],
+        'empresa_id': active_id,
         'codigo': codigo,
         'codigo_estrutural': codigo,
         'descricao': nome,
