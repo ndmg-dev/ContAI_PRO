@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+from app.infrastructure.logger import logger
 
 load_dotenv()
 
@@ -13,6 +14,11 @@ class Config:
     
     # Auth settings
     ALLOWED_DOMAIN = os.environ.get('ALLOWED_DOMAIN', 'mendoncagalvao.com.br').strip()
+
+    # CRM SSO: HS256 secret used to validate JWTs issued by the CRM_MG backend
+    # so the CRM React frontend can call this API without the Google OAuth
+    # session-cookie flow.
+    CRM_JWT_SECRET = os.environ.get('CRM_JWT_SECRET', '').strip()
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     SESSION_COOKIE_SECURE = APP_ENV == 'production'
@@ -35,4 +41,8 @@ class Config:
             if not cls.SECRET_KEY or len(cls.SECRET_KEY.strip()) < 32:
                 raise RuntimeError(
                     "Config inválida: em produção, defina SECRET_KEY forte (>= 32 chars) no ambiente."
+                )
+            if not cls.CRM_JWT_SECRET:
+                logger.warning(
+                    "[Config] CRM_JWT_SECRET não definido; a integração SSO com o CRM ficará desabilitada."
                 )

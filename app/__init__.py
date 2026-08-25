@@ -1,16 +1,31 @@
 from flask import Flask
 from app.config import Config
 from flask_wtf.csrf import CSRFProtect
+from flask_cors import CORS
 
 def create_app(config_class=Config):
-    app = Flask(__name__, 
-                template_folder='web/templates', 
+    app = Flask(__name__,
+                template_folder='web/templates',
                 static_folder='web/static')
     app.config.from_object(config_class)
     config_class.validate()
 
     # CSRF protection (forms + fetch POSTs)
     CSRFProtect(app)
+
+    # CORS: only for the JSON API used by the CRM_MG React frontend
+    # (/api/*). The standalone Jinja app keeps using same-origin session
+    # cookies and is unaffected — CORS is not applied globally.
+    CORS(
+        app,
+        resources={r"/api/*": {"origins": [
+            "https://crmmg.mendoncagalvao.com.br",
+            "http://localhost:3000",
+            "http://localhost:5173",
+        ]}},
+        methods=["GET", "POST", "DELETE"],
+        allow_headers=["Authorization", "Content-Type"],
+    )
 
     # Register Blueprints
     from app.web.routes.main import bp as main_bp
